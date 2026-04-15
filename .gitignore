@@ -1,0 +1,66 @@
+# [MacOS files]
+
+.DS_Store
+*/*DS_Store
+*/*.pem
+*/.env*.local
+*/.env.example
+
+
+
+# [archived files]
+
+k8s-backup/
+archives/*
+
+
+
+# [ai cruft]
+
+mcp-server-kubernetes/*
+ai-md/*
+
+
+
+# [python venv]
+
+venv/*
+
+
+
+# [k8s ignore]
+
+k8s/gitignore/*
+
+
+
+# [python-db-secrets]
+
+new_dev_work/python_tools/secrets/dbsecrets.py
+
+
+
+# [generic wordpress]
+
+wordpress_root/*.php
+wordpress_root/*.txt
+wordpress_root/wp-admin/*
+wordpress_root/wp-includes/*
+wordpress_root/wp-content/cache/*
+wordpress_root/wp-content/ewww/*
+wordpress_root/wp-content/index.php
+wordpress_root/wp-content/languages/*
+wordpress_root/wp-content/ngg/*
+wordpress_root/wp-content/themes/*
+wordpress_root/wp-content/tubepress-content/*
+wordpress_root/wp-content/upgrade/*
+wordpress_root/wp-content/upgrade-temp-backup/*
+wordpress_root/wp-content/uploads/*
+wordpress_root/wp-content/w3tc-config/*
+wordpress_root/wp-content/plugins/ewww-image-optimizer/*
+wordpress_root/wp-content/plugins/force-regenerate-thumbnails/*
+wordpress_root/wp-content/plugins/index.php
+wordpress_root/wp-content/plugins/wp-retina-2x/*
+
+
+

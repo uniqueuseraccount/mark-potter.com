@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-migration-tools
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: python-migration-tools
+  template:
+    metadata:
+      labels:
+        app: python-migration-tools
+    spec:
+      containers:
+        - name: python
+          image: python:3.11-slim
+          command: ["tail", "-f", "/dev/null"]
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+          env:
+            - name: DB_HOST
+              value: "wordpress-mysql.default.svc.cluster.local"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: wp-secrets
+                  key: mysql-user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wp-secrets
+                  key: mysql-password
+            - name: DB_NAME
+              value: "wordpress"
+      volumes:
+        - name: scripts
+          emptyDir: {}

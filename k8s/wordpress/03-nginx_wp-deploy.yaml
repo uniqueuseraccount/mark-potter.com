@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-wp-config
+  namespace: default
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name _;
+        root /var/www/html;
+        index index.php index.html;
+        resolver 10.43.0.10 valid=10s;
+        location / {
+            try_files $uri $uri/ /index.php?$args;
+        }
+        location ~ \.php$ {
+            include fastcgi_params;
+            set $backend "wordpress.default.svc.cluster.local:9000";
+            fastcgi_pass $backend;
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            fastcgi_param HTTP_AUTHORIZATION $http_authorization;
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-wp
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-wp
+  template:
+    metadata:
+      labels:
+        app: nginx-wp
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: tier
+                operator: In
+                values: ["high"]
+          - weight: 80
+            preference:
+              matchExpressions:
+              - key: tier
+                operator: In
+                values: ["medium-high"]
+          - weight: 60
+            preference:
+              matchExpressions:
+              - key: tier
+                operator: In
+                values: ["medium"]
+          - weight: 40
+            preference:
+              matchExpressions:
+              - key: tier
+                operator: In
+                values: ["low"]
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: nginx-wp-config
+        - name: wp
+          persistentVolumeClaim:
+            claimName: wp-pv-claim
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+            - name: wp
+              mountPath: /var/www/html
+              readOnly: true
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-wp
+  namespace: default
+spec:
+  selector:
+    app: nginx-wp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP

@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nextjs-dev
+  namespace: mark-potter-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nextjs-dev
+  template:
+    metadata:
+      labels:
+        app: nextjs-dev
+    spec:
+      containers:
+      - name: nextjs
+        image: node:20-alpine
+        command: ["sh", "-c", "npm install && npm run dev"]
+        workingDir: /app
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "development"
+        - name: NEXT_PUBLIC_WP_API_URL
+          value: "http://nginx-wp.default.svc.cluster.local/wp-json"
+        - name: NEXT_TELEMETRY_DISABLED
+          value: "1"
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+      volumes:
+      - name: app-code
+        persistentVolumeClaim:
+          claimName: nextjs-dev-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nextjs-dev
+  namespace: mark-potter-dev
+spec:
+  selector:
+    app: nextjs-dev
+  ports:
+  - port: 3000
+    targetPort: 3000
+  type: ClusterIP

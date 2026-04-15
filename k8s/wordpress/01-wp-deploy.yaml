@@ -1,0 +1,168 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wordpress
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: wordpress
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: tier
+                    operator: In
+                    values: ["high"]
+            - weight: 80
+              preference:
+                matchExpressions:
+                  - key: tier
+                    operator: In
+                    values: ["medium-high"]
+            - weight: 60
+              preference:
+                matchExpressions:
+                  - key: tier
+                    operator: In
+                    values: ["medium"]
+      volumes:
+        - name: wp
+          persistentVolumeClaim:
+            claimName: wp-pv-claim
+        - name: tools
+          emptyDir: {}
+        #        - name: php-ext
+        #          emptyDir: {}
+        - name: php-fpm-config
+          configMap:
+            name: php-fpm-config
+      initContainers:
+        - name: create-www-dir
+          image: alpine:3.19
+          command:
+            - sh
+            - -c
+            - mkdir -p /var/www/html
+          volumeMounts:
+            - name: wp
+              mountPath: /var/www/html
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "25m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+        - name: install-tools
+          image: alpine:3.19
+          command:
+            - sh
+            - -c
+            - |
+              apk add --no-cache gifsicle jpegoptim optipng pngquant --repository=https://dl-cdn.alpinelinux.org/alpine/v3.19/community
+              mkdir -p /tools
+              cp /usr/bin/gifsicle /tools/ 2>/dev/null || true
+              cp /usr/bin/jpegoptim /tools/ 2>/dev/null || true
+              cp /usr/bin/optipng /tools/ 2>/dev/null || true
+              cp /usr/bin/pngquant /tools/ 2>/dev/null || true
+              chmod +x /tools/* 2>/dev/null || true
+          volumeMounts:
+            - name: tools
+              mountPath: /tools
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+      #        - name: install-phpredis
+      #          image: wordpress:php8.5-fpm-alpine
+      #          command:
+      #            - sh
+      #            - -c
+      #            - |
+      #              apk add --no-cache $PHPIZE_DEPS
+      #              pecl install redis
+      #              docker-php-ext-enable redis
+      #              cp /usr/local/etc/php/conf.d/docker-php-ext-redis.ini /php-ext/zz-redis.ini
+      #          volumeMounts:
+      #            - name: php-ext
+      #              mountPath: /php-ext
+      #          resources:
+      #            requests:
+      #              memory: "128Mi"
+      #              cpu: "100m"
+      #            limits:
+      #              memory: "256Mi"
+      #              cpu: "500m"
+      containers:
+        - name: wordpress
+          image: wordpress:php8.5-fpm-alpine
+          ports:
+            - containerPort: 9000
+              protocol: TCP
+          env:
+            - name: PATH
+              value: "/tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            - name: WORDPRESS_DB_HOST
+              value: wordpress-mysql
+            - name: WORDPRESS_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: wp-secrets
+                  key: mysql-user
+            - name: WORDPRESS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wp-secrets
+                  key: mysql-password
+            - name: WORDPRESS_DB_NAME
+              value: wordpress
+            #           - name: WP_CACHE
+            #             value: "true"
+            - name: WP_MEMORY_LIMIT
+              value: "256M"
+          volumeMounts:
+            - name: wp
+              mountPath: /var/www/html
+            - name: tools
+              mountPath: /tools
+            #           - name: php-ext
+            #             mountPath: /usr/local/etc/php/conf.d/zz-redis.ini
+            #             subPath: zz-redis.ini
+            - name: php-fpm-config
+              mountPath: /usr/local/etc/php-fpm.d/zz-docker.conf
+              subPath: zz-docker.conf
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress
+  namespace: default
+spec:
+  selector:
+    app: wordpress
+  ports:
+    - protocol: TCP
+      port: 9000
+      targetPort: 9000
+  type: ClusterIP

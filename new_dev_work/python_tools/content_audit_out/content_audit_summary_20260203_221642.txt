@@ -1,0 +1,21 @@
+
+Content Audit Summary
+============================================================
+
+Total Posts: 76
+
+Featured Images:
+  With featured image: 55 (72.4%)
+  Without featured image: 21 (27.6%)
+
+Content Types:
+  Posts with galleries: 40 (52.6%)
+  Posts with standalone images: 58 (76.3%)
+  Posts with videos: 12 (15.8%)
+  Text-only posts: 7 (9.2%)
+
+Post Types:
+  page: 6
+  post: 70
+
+============================================================
